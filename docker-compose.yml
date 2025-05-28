@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # PostgreSQLデータベース
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=netflix_clone
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # バックエンドAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/netflix_clone
+      - JWT_SECRET_KEY=netflix-clone-secret-key
+      - FLASK_APP=run.py
+      - FLASK_ENV=production
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./backend/src:/app/src
+    command: >
+      sh -c "python init_db.py && 
+             python seed_db.py && 
+             gunicorn --bind 0.0.0.0:5050 run:app"
+
+  # フロントエンド
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:5050
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
