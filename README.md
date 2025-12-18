@@ -38,7 +38,7 @@
 1. リポジトリをクローン
 ```
 git clone <リポジトリURL>
-cd netflix-clone
+cd manus-flix
 ```
 
 2. Docker Composeでサービスを起動
